@@ -183,16 +183,29 @@ const btnAddProtein = document.getElementById('btn-add-protein');
 const proteinLogList = document.getElementById('protein-log-list');
 
 function initProteinTracker() {
-    // Load daily stats
-    currentProtein = parseInt(localStorage.getItem('vitality_protein_total')) || 0;
-    proteinLogs = JSON.parse(localStorage.getItem('vitality_protein_logs')) || [];
+    const today = new Date().toDateString(); 
+    const savedDate = localStorage.getItem('vitality_protein_date');
+
+    // Midnight Reset Logic: Check if the saved date matches today
+    if (savedDate !== today) {
+        // It's a new day! Reset today's stats to 0.
+        currentProtein = 0;
+        proteinLogs = [];
+        localStorage.setItem('vitality_protein_date', today);
+        saveProteinData(); 
+    } else {
+        // It's the same day! Load the saved data.
+        currentProtein = parseInt(localStorage.getItem('vitality_protein_total')) || 0;
+        proteinLogs = JSON.parse(localStorage.getItem('vitality_protein_logs')) || [];
+    }
     
-    // Load favorites database
+    // Load favorites database (we don't want this to reset daily!)
     favoriteMeals = JSON.parse(localStorage.getItem('vitality_favorite_meals')) || [];
 
     renderProteinLogs();
     updateProteinUI();
 }
+
 
 function saveProteinData() {
     localStorage.setItem('vitality_protein_total', currentProtein);
