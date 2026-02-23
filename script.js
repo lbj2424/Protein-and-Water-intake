@@ -38,7 +38,7 @@ function goHome() {
     mainView.classList.add('active');
 }
 // --- WATER TRACKER LOGIC & LOCAL STORAGE ---
-const WATER_GOAL = 85;
+const WATER_GOAL = 124;
 let currentWater = 0;
 let waterLogs = []; // Array to hold our daily logs
 
