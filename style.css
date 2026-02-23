@@ -1,0 +1,143 @@
+/* --- Variables for Futuristic Theme --- */
+:root {
+    --bg-color: #0b0f19;
+    --surface-color: #161e2e;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --neon-blue: #0ea5e9;
+    --neon-blue-glow: rgba(14, 165, 233, 0.4);
+    --neon-purple: #d946ef;
+    --neon-purple-glow: rgba(217, 70, 239, 0.4);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* Restricts max width for desktop so it looks like an app */
+.app-container {
+    width: 100%;
+    max-width: 480px; 
+    background-color: var(--surface-color);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+}
+
+/* --- View Management (SPA logic) --- */
+.view {
+    padding: 2rem;
+    display: none; /* Hidden by default */
+    flex-direction: column;
+    height: 100%;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.view.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Main Screen Typography & Layout --- */
+#main-view {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-bottom: 2rem;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+/* --- Buttons --- */
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.nav-btn {
+    background: transparent;
+    color: var(--text-main);
+    border: 2px solid;
+    padding: 1.2rem;
+    font-size: 1.2rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+}
+
+.neon-blue {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue-glow);
+}
+.neon-blue:hover, .neon-blue:active {
+    background-color: var(--neon-blue);
+    color: #000;
+}
+
+.neon-purple {
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 15px var(--neon-purple-glow);
+}
+.neon-purple:hover, .neon-purple:active {
+    background-color: var(--neon-purple);
+    color: #000;
+}
+
+/* --- Headers for Water/Protein pages --- */
+header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.back-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    margin-right: auto;
+    transition: color 0.2s;
+}
+
+.back-btn:hover {
+    color: var(--text-main);
+}
+
+.placeholder-text {
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 2rem;
+}
