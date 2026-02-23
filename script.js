@@ -161,3 +161,145 @@ function renderWaterLogs() {
         logList.appendChild(li);
     });
 }
+
+// --- PROTEIN TRACKER LOGIC & LOCAL STORAGE ---
+const PROTEIN_GOAL = 165; // Change your daily goal here
+let currentProtein = 0;
+let proteinLogs = [];
+let favoriteMeals = [];
+
+// DOM Elements
+const proteinFillPath = document.getElementById('protein-fill-path');
+const textProteinPercentage = document.getElementById('protein-percentage');
+const textProteinCurrent = document.getElementById('protein-current');
+const textProteinRemaining = document.getElementById('protein-remaining');
+
+const mealSearch = document.getElementById('meal-search');
+const searchResults = document.getElementById('search-results');
+const mealNameInput = document.getElementById('meal-name');
+const proteinInput = document.getElementById('protein-input');
+const saveFavoriteCheckbox = document.getElementById('save-favorite');
+const btnAddProtein = document.getElementById('btn-add-protein');
+const proteinLogList = document.getElementById('protein-log-list');
+
+function initProteinTracker() {
+    // Load daily stats
+    currentProtein = parseInt(localStorage.getItem('vitality_protein_total')) || 0;
+    proteinLogs = JSON.parse(localStorage.getItem('vitality_protein_logs')) || [];
+    
+    // Load favorites database
+    favoriteMeals = JSON.parse(localStorage.getItem('vitality_favorite_meals')) || [];
+
+    renderProteinLogs();
+    updateProteinUI();
+}
+
+function saveProteinData() {
+    localStorage.setItem('vitality_protein_total', currentProtein);
+    localStorage.setItem('vitality_protein_logs', JSON.stringify(proteinLogs));
+    localStorage.setItem('vitality_favorite_meals', JSON.stringify(favoriteMeals));
+}
+
+// Initialize
+initProteinTracker();
+
+// --- Log Protein Event ---
+btnAddProtein.addEventListener('click', () => {
+    const mealName = mealNameInput.value.trim() || "Snack";
+    const proteinGrams = parseInt(proteinInput.value);
+    
+    if (isNaN(proteinGrams) || proteinGrams <= 0) return;
+
+    // 1. Update total
+    currentProtein += proteinGrams;
+    
+    // 2. Handle Favorites
+    if (saveFavoriteCheckbox.checked) {
+        // Check if it already exists so we don't make duplicates
+        const exists = favoriteMeals.find(meal => meal.name.toLowerCase() === mealName.toLowerCase());
+        if (!exists) {
+            favoriteMeals.push({ name: mealName, grams: proteinGrams });
+        }
+    }
+
+    // 3. Create Log
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    proteinLogs.unshift({ meal: mealName, amount: proteinGrams, time: timeString });
+    
+    // 4. Save & Clean up
+    saveProteinData();
+    renderProteinLogs();
+    updateProteinUI();
+    
+    mealNameInput.value = '';
+    proteinInput.value = '';
+    mealSearch.value = '';
+    saveFavoriteCheckbox.checked = false;
+});
+
+// --- Search / Auto-Populate Logic ---
+mealSearch.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    searchResults.innerHTML = '';
+    
+    if (query.length === 0) {
+        searchResults.classList.add('hidden');
+        return;
+    }
+
+    const filtered = favoriteMeals.filter(meal => meal.name.toLowerCase().includes(query));
+    
+    if (filtered.length > 0) {
+        searchResults.classList.remove('hidden');
+        filtered.forEach(meal => {
+            const li = document.createElement('li');
+            li.className = 'search-item';
+            li.innerHTML = `<span>${meal.name}</span> <span class="highlight" style="color:var(--neon-purple);">${meal.grams}g</span>`;
+            
+            // Auto-populate when clicked
+            li.addEventListener('click', () => {
+                mealNameInput.value = meal.name;
+                proteinInput.value = meal.grams;
+                searchResults.classList.add('hidden');
+                mealSearch.value = ''; // clear search bar
+            });
+            searchResults.appendChild(li);
+        });
+    } else {
+        searchResults.classList.add('hidden');
+    }
+});
+
+// Hide search results if clicking outside
+document.addEventListener('click', (e) => {
+    if (!mealSearch.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add('hidden');
+    }
+});
+
+// --- UI Updates ---
+function updateProteinUI() {
+    let percentage = Math.round((currentProtein / PROTEIN_GOAL) * 100);
+    let remaining = PROTEIN_GOAL - currentProtein;
+    if (remaining < 0) remaining = 0; 
+    
+    textProteinPercentage.innerText = `${percentage}%`;
+    textProteinCurrent.innerText = currentProtein;
+    textProteinRemaining.innerText = remaining;
+
+    // SVG Math: 126 is fully empty, 0 is fully full.
+    let visualPercentage = percentage > 100 ? 100 : percentage;
+    let dashOffset = 126 - ((visualPercentage / 100) * 126);
+    proteinFillPath.style.strokeDashoffset = dashOffset;
+}
+
+function renderProteinLogs() {
+    proteinLogList.innerHTML = ''; 
+    proteinLogs.forEach(log => {
+        const li = document.createElement('li');
+        li.className = 'log-item';
+        li.innerHTML = `<span>🥩 ${log.meal} - <strong style="color:var(--neon-purple);">${log.amount}g</strong></span> <span class="text-muted">${log.time}</span>`;
+        proteinLogList.appendChild(li);
+    });
+}
