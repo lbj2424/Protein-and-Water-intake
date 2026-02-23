@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vitality Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <section id="main-view" class="view active">
+            <h1>Take me to the</h1>
+            <div class="button-group">
+                <button id="btn-go-water" class="nav-btn neon-blue">Water Intake</button>
+                <button id="btn-go-protein" class="nav-btn neon-purple">Protein Intake</button>
+            </div>
+        </section>
+
+        <section id="water-view" class="view hidden">
+            <header>
+                <button class="back-btn" onclick="goHome()">← Back</button>
+                <h2>Hydration</h2>
+            </header>
+            
+            <div class="content-area">
+                <p class="placeholder-text">Water Glass Interface Loading...</p>
+            </div>
+        </section>
+
+        <section id="protein-view" class="view hidden">
+            <header>
+                <button class="back-btn" onclick="goHome()">← Back</button>
+                <h2>Protein</h2>
+            </header>
+            
+            <div class="content-area">
+                <p class="placeholder-text">Protein Interface Loading...</p>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
