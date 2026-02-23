@@ -74,8 +74,53 @@
                 <h2>Protein</h2>
             </header>
             
-            <div class="content-area">
-                <p class="placeholder-text">Protein Interface Loading...</p>
+            <div class="content-area protein-layout">
+                
+                <div class="semi-circle-container">
+                    <svg viewBox="0 0 100 50" class="half-circle-svg">
+                        <path class="bg-path" d="M 10,45 A 40,40 0 0,1 90,45" />
+                        <path class="fill-path" id="protein-fill-path" d="M 10,45 A 40,40 0 0,1 90,45" />
+                    </svg>
+                    <div class="protein-stats-overlay">
+                        <h1 id="protein-percentage">0%</h1>
+                    </div>
+                </div>
+
+                <div class="stats-container">
+                    <p><span id="protein-current" class="highlight" style="color: var(--neon-purple);">0</span> / 150 g</p>
+                    <p class="text-muted"><span id="protein-remaining">150</span> g needed</p>
+                </div>
+
+                <div class="input-section">
+                    <h3>Log a Meal</h3>
+                    
+                    <div class="search-container">
+                        <input type="text" id="meal-search" placeholder="🔍 Search favorite meals...">
+                        <ul id="search-results" class="search-results hidden"></ul>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 10px;">
+                        <input type="text" id="meal-name" placeholder="Meal Name (e.g. Chicken)">
+                        <input type="number" id="protein-input" placeholder="Grams" min="1" style="max-width: 100px;">
+                    </div>
+                    
+                    <div class="favorite-checkbox">
+                        <input type="checkbox" id="save-favorite">
+                        <label for="save-favorite">Save as a Favorite Meal</label>
+                    </div>
+
+                    <button id="btn-add-protein" class="nav-btn neon-purple small-btn" style="width: 100%; margin-top: 15px;">Log Protein</button>
+                </div>
+
+                <div class="log-section">
+                    <h3>Daily Log</h3>
+                    <ul id="protein-log-list" class="log-list">
+                        </ul>
+                </div>
+                
+                <div class="chart-container" style="margin-top: 2rem;">
+                    <canvas id="proteinChart"></canvas>
+                </div>
             </div>
         </section>
 
