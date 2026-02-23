@@ -303,3 +303,137 @@ function renderProteinLogs() {
         proteinLogList.appendChild(li);
     });
 }
+// ==========================================
+// --- CHART.JS AND HISTORY LOGIC ---
+// ==========================================
+
+// 1. History Variables
+let waterHistory = JSON.parse(localStorage.getItem('vitality_water_history')) || {};
+let proteinHistory = JSON.parse(localStorage.getItem('vitality_protein_history')) || {};
+
+// Modify the existing save functions to also save to history
+const originalSaveWater = saveWaterData;
+saveWaterData = function() {
+    originalSaveWater(); // Do the old stuff
+    const todayStr = new Date().toDateString();
+    waterHistory[todayStr] = currentWater; // Record today's total
+    localStorage.setItem('vitality_water_history', JSON.stringify(waterHistory));
+    if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
+};
+
+const originalSaveProtein = saveProteinData;
+saveProteinData = function() {
+    originalSaveProtein(); // Do the old stuff
+    const todayStr = new Date().toDateString();
+    proteinHistory[todayStr] = currentProtein; // Record today's total
+    localStorage.setItem('vitality_protein_history', JSON.stringify(proteinHistory));
+    if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+};
+
+// 2. Chart Configurations
+Chart.defaults.color = '#94a3b8'; // Match our text-muted
+Chart.defaults.font.family = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+let waterChartInstance = null;
+let proteinChartInstance = null;
+
+let waterViewMode = 7; // Default to 7 days
+let proteinViewMode = 7;
+
+// Function to get the last N days as formatted strings
+function getLastNDays(n) {
+    const dates = [];
+    const labels = [];
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(d.toDateString());
+        // Shorten label for the X-axis (e.g., "Feb 22")
+        labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+    return { dates, labels };
+}
+
+// Function to build/update a chart
+function initChart(canvasId, color, glowColor, historyData, days) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const timeData = getLastNDays(days);
+    
+    // Map dates to our history object. If no data for a day, use 0.
+    const dataPoints = timeData.dates.map(date => historyData[date] || 0);
+
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: timeData.labels,
+            datasets: [{
+                label: 'Intake',
+                data: dataPoints,
+                borderColor: color,
+                backgroundColor: glowColor,
+                borderWidth: 2,
+                pointBackgroundColor: color,
+                pointRadius: 3,
+                fill: true,
+                tension: 0.3 // Adds the futuristic curve
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }, // Hide legend
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+function updateChart(chart, historyData, days) {
+    const timeData = getLastNDays(days);
+    const dataPoints = timeData.dates.map(date => historyData[date] || 0);
+    chart.data.labels = timeData.labels;
+    chart.data.datasets[0].data = dataPoints;
+    chart.update();
+}
+
+// 3. Initialize Charts on Load
+// Use a small timeout to ensure DOM is fully ready
+setTimeout(() => {
+    waterChartInstance = initChart('waterChart', '#0ea5e9', 'rgba(14, 165, 233, 0.1)', waterHistory, waterViewMode);
+    proteinChartInstance = initChart('proteinChart', '#d946ef', 'rgba(217, 70, 239, 0.1)', proteinHistory, proteinViewMode);
+}, 100);
+
+// 4. Toggle Listeners
+document.getElementById('water-week-btn').addEventListener('click', (e) => {
+    waterViewMode = 7;
+    e.target.classList.add('active');
+    document.getElementById('water-month-btn').classList.remove('active');
+    updateChart(waterChartInstance, waterHistory, waterViewMode);
+});
+
+document.getElementById('water-month-btn').addEventListener('click', (e) => {
+    waterViewMode = 30;
+    e.target.classList.add('active');
+    document.getElementById('water-week-btn').classList.remove('active');
+    updateChart(waterChartInstance, waterHistory, waterViewMode);
+});
+
+document.getElementById('protein-week-btn').addEventListener('click', (e) => {
+    proteinViewMode = 7;
+    e.target.classList.add('active');
+    document.getElementById('protein-month-btn').classList.remove('active');
+    updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+});
+
+document.getElementById('protein-month-btn').addEventListener('click', (e) => {
+    proteinViewMode = 30;
+    e.target.classList.add('active');
+    document.getElementById('protein-week-btn').classList.remove('active');
+    updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+});
+
+// Immediately trigger a save to populate today's data in the new history format
+saveWaterData();
+saveProteinData();
