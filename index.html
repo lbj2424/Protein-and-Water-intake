@@ -25,8 +25,46 @@
                 <h2>Hydration</h2>
             </header>
             
-            <div class="content-area">
-                <p class="placeholder-text">Water Glass Interface Loading...</p>
+            <div class="content-area water-layout">
+                <div class="speech-bubble" id="water-speech">I'm so dry... please log some water!</div>
+
+                <div class="glass-container">
+                    <div class="glass">
+                        <div class="water-fill" id="water-fill"></div>
+                        <div class="glass-face" id="glass-face">
+                            <div class="eyes" id="glass-eyes">
+                                <div class="eye"></div>
+                                <div class="eye"></div>
+                            </div>
+                            <div class="mouth" id="glass-mouth"></div>
+                        </div>
+                    </div>
+                    <div class="arm" id="glass-arm">👋</div>
+                </div>
+
+                <div class="stats-container">
+                    <h1 id="water-percentage">0%</h1>
+                    <p><span id="water-current" class="highlight">0</span> / 85 oz</p>
+                    <p class="text-muted"><span id="water-remaining">85</span> oz needed</p>
+                </div>
+
+                <div class="input-section">
+                    <h3>Enter new log</h3>
+                    <div class="input-group">
+                        <input type="number" id="water-input" placeholder="Ounces (e.g., 8)" min="1">
+                        <button id="btn-add-water" class="nav-btn neon-blue small-btn">Drink!</button>
+                    </div>
+                </div>
+
+                <div class="log-section">
+                    <h3>Daily Log</h3>
+                    <ul id="water-log-list" class="log-list">
+                        </ul>
+                </div>
+                
+                <div class="chart-container" style="margin-top: 2rem;">
+                    <canvas id="waterChart"></canvas>
+                </div>
             </div>
         </section>
 
