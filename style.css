@@ -141,3 +141,195 @@ header {
     text-align: center;
     margin-top: 2rem;
 }
+/* --- Water View Layout --- */
+.water-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+/* --- Speech Bubble --- */
+.speech-bubble {
+    background: var(--surface-color);
+    border: 1px solid var(--neon-blue);
+    padding: 1rem;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    box-shadow: 0 0 10px var(--neon-blue-glow);
+    position: relative;
+    text-align: center;
+    max-width: 80%;
+    transition: all 0.3s ease;
+}
+.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    margin-left: -10px;
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: var(--neon-blue) transparent transparent transparent;
+}
+
+/* --- Sentient Glass --- */
+.glass-container {
+    position: relative;
+    margin: 1rem 0;
+}
+
+.glass {
+    width: 120px;
+    height: 180px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.05);
+    box-shadow: inset 0 0 20px rgba(14, 165, 233, 0.1);
+}
+
+.water-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%; /* JS will change this */
+    background: linear-gradient(180deg, var(--neon-blue) 0%, #0284c7 100%);
+    transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 -5px 15px var(--neon-blue-glow);
+}
+
+/* Face Styles */
+.glass-face {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    z-index: 2;
+}
+
+.eyes {
+    display: flex;
+    gap: 20px;
+}
+
+.eye {
+    width: 12px;
+    height: 12px;
+    background-color: var(--text-main);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+/* Mood: Sad (0-25%) */
+.mouth.sad {
+    width: 20px;
+    height: 10px;
+    border: 3px solid var(--text-main);
+    border-color: var(--text-main) transparent transparent transparent;
+    border-radius: 50% / 100% 100% 0 0;
+    margin-top: 5px;
+}
+
+/* Mood: Neutral/Happy (26-75%) */
+.mouth.happy {
+    width: 20px;
+    height: 10px;
+    border: 3px solid var(--text-main);
+    border-color: transparent transparent var(--text-main) transparent;
+    border-radius: 50%;
+}
+
+/* Mood: Ecstatic (76-100%) */
+.mouth.ecstatic {
+    width: 24px;
+    height: 12px;
+    background-color: var(--text-main);
+    border-radius: 0 0 20px 20px;
+}
+
+.eyes.happy-eyes .eye {
+    height: 4px;
+    border-radius: 10px;
+    margin-top: 4px;
+}
+
+/* Waving Arm Animation */
+.arm {
+    position: absolute;
+    right: -35px;
+    top: 50%;
+    font-size: 2rem;
+    opacity: 0; /* Hidden by default */
+    transform-origin: bottom center;
+}
+
+.arm.waving {
+    opacity: 1;
+    animation: wave 1s infinite alternate ease-in-out;
+}
+
+@keyframes wave {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(40deg); }
+}
+
+/* --- Stats & Inputs --- */
+.stats-container { text-align: center; }
+.highlight { color: var(--neon-blue); font-weight: bold; }
+.text-muted { color: var(--text-muted); font-size: 0.9rem; margin-top: 5px; }
+
+.input-section, .log-section { width: 100%; margin-top: 1rem; }
+h3 { margin-bottom: 0.8rem; font-size: 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+input[type="number"] {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--text-muted);
+    color: var(--text-main);
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--neon-blue);
+}
+
+.small-btn {
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
+}
+
+/* --- Log List --- */
+.log-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.log-item {
+    background: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
