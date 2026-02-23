@@ -1,112 +1,195 @@
 // ==========================================
+// --- FIREBASE CLOUD SETUP ---
+// ==========================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// Your exact Firebase config
+const firebaseConfig = {
+    apiKey: "AIzaSyD8bcn0jx_qBku1vM-bPpMlzChdzDlOCas",
+    authDomain: "protein-and-water.firebaseapp.com",
+    projectId: "protein-and-water",
+    storageBucket: "protein-and-water.firebasestorage.app",
+    messagingSenderId: "597236632194",
+    appId: "1:597236632194:web:fc551c6bff28bf9f8c829b",
+    measurementId: "G-GZ8C4SHG4M"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// We will save all your stats into one document called "my_data"
+const docRef = doc(db, "vitality", "my_data");
+
+// ==========================================
 // --- NAVIGATION LOGIC ---
 // ==========================================
-
-// Grab our views from the DOM
 const mainView = document.getElementById('main-view');
 const waterView = document.getElementById('water-view');
 const proteinView = document.getElementById('protein-view');
 
-// Grab our navigation buttons
-const btnGoWater = document.getElementById('btn-go-water');
-const btnGoProtein = document.getElementById('btn-go-protein');
-
-// Function to hide all views
 function hideAllViews() {
     mainView.classList.remove('active');
     waterView.classList.remove('active');
     proteinView.classList.remove('active');
-    
     mainView.classList.add('hidden');
     waterView.classList.add('hidden');
     proteinView.classList.add('hidden');
 }
 
-// Event Listeners for main menu buttons
-btnGoWater.addEventListener('click', () => {
+document.getElementById('btn-go-water').addEventListener('click', () => {
     hideAllViews();
     waterView.classList.remove('hidden');
     waterView.classList.add('active');
 });
 
-btnGoProtein.addEventListener('click', () => {
+document.getElementById('btn-go-protein').addEventListener('click', () => {
     hideAllViews();
     proteinView.classList.remove('hidden');
     proteinView.classList.add('active');
 });
 
-// Function attached to the 'Back' buttons in the HTML
-function goHome() {
+// Attach to window so HTML buttons can still find it inside this module
+window.goHome = function() {
     hideAllViews();
     mainView.classList.remove('hidden');
     mainView.classList.add('active');
+};
+
+// ==========================================
+// --- GLOBAL VARIABLES & CLOUD SYNC ---
+// ==========================================
+const WATER_GOAL = 124;
+const PROTEIN_GOAL = 165; 
+
+let currentWater = 0;
+let waterLogs = []; 
+let waterHistory = {};
+
+let currentProtein = 0;
+let proteinLogs = [];
+let favoriteMeals = [];
+let proteinHistory = {};
+
+// Load data from Firebase when the app starts
+async function loadDataAndInit() {
+    try {
+        const docSnap = await getDoc(docRef);
+        let dbData;
+
+        if (docSnap.exists()) {
+            dbData = docSnap.data();
+        } else {
+            // First time on Firebase? Migrate local storage so you don't lose data!
+            dbData = {
+                waterDate: localStorage.getItem('vitality_date') || "",
+                waterTotal: parseFloat(localStorage.getItem('vitality_water_total')) || 0,
+                waterLogs: JSON.parse(localStorage.getItem('vitality_water_logs')) || [],
+                waterHistory: JSON.parse(localStorage.getItem('vitality_water_history')) || {},
+                
+                proteinDate: localStorage.getItem('vitality_protein_date') || "",
+                proteinTotal: parseFloat(localStorage.getItem('vitality_protein_total')) || 0,
+                proteinLogs: JSON.parse(localStorage.getItem('vitality_protein_logs')) || [],
+                proteinHistory: JSON.parse(localStorage.getItem('vitality_protein_history')) || {},
+                favoriteMeals: JSON.parse(localStorage.getItem('vitality_favorite_meals')) || []
+            };
+        }
+
+        // Midnight Resets
+        const today = new Date().toDateString();
+        if (dbData.waterDate !== today) {
+            dbData.waterTotal = 0;
+            dbData.waterLogs = [];
+            dbData.waterDate = today;
+        }
+        if (dbData.proteinDate !== today) {
+            dbData.proteinTotal = 0;
+            dbData.proteinLogs = [];
+            dbData.proteinDate = today;
+        }
+
+        // Apply loaded data to our app
+        currentWater = dbData.waterTotal;
+        waterLogs = dbData.waterLogs || [];
+        waterHistory = dbData.waterHistory || {};
+
+        currentProtein = dbData.proteinTotal;
+        proteinLogs = dbData.proteinLogs || [];
+        proteinHistory = dbData.proteinHistory || {};
+        favoriteMeals = dbData.favoriteMeals || [];
+
+        // Update UI
+        renderWaterLogs();
+        updateWaterUI();
+        renderProteinLogs();
+        updateProteinUI();
+
+        // Init Charts & Save to lock in the daily history
+        initAllCharts();
+        saveToFirebase();
+
+    } catch (error) {
+        console.error("Error connecting to Firebase:", error);
+    }
 }
+
+async function saveToFirebase() {
+    const dbData = {
+        waterDate: new Date().toDateString(),
+        waterTotal: currentWater,
+        waterLogs: waterLogs,
+        waterHistory: waterHistory,
+        
+        proteinDate: new Date().toDateString(),
+        proteinTotal: currentProtein,
+        proteinLogs: proteinLogs,
+        proteinHistory: proteinHistory,
+        favoriteMeals: favoriteMeals
+    };
+    try {
+        await setDoc(docRef, dbData);
+    } catch(e) {
+        console.error("Error saving to Firebase:", e);
+    }
+}
+
+// Start the app!
+loadDataAndInit();
 
 // ==========================================
 // --- WATER TRACKER LOGIC ---
 // ==========================================
-const WATER_GOAL = 124;
-let currentWater = 0;
-let waterLogs = []; 
-
-// DOM Elements
 const waterFill = document.getElementById('water-fill');
 const waterSpeech = document.getElementById('water-speech');
 const glassMouth = document.getElementById('glass-mouth');
 const glassEyes = document.getElementById('glass-eyes');
 const glassArm = document.getElementById('glass-arm');
-
 const textPercentage = document.getElementById('water-percentage');
 const textCurrent = document.getElementById('water-current');
 const textRemaining = document.getElementById('water-remaining');
-
 const waterInput = document.getElementById('water-input');
-const btnAddWater = document.getElementById('btn-add-water');
 const logList = document.getElementById('water-log-list');
 
-function initWaterTracker() {
-    const today = new Date().toDateString(); 
-    const savedDate = localStorage.getItem('vitality_date');
-
-    if (savedDate !== today) {
-        currentWater = 0;
-        waterLogs = [];
-        localStorage.setItem('vitality_date', today);
-        saveWaterData(); 
-    } else {
-        // Use parseFloat to support decimals
-        currentWater = parseFloat(localStorage.getItem('vitality_water_total')) || 0;
-        waterLogs = JSON.parse(localStorage.getItem('vitality_water_logs')) || [];
-    }
-
-    renderWaterLogs();
-    updateWaterUI();
-}
-
-let saveWaterData = function() {
-    localStorage.setItem('vitality_water_total', currentWater);
-    localStorage.setItem('vitality_water_logs', JSON.stringify(waterLogs));
-}
-
-// Event Listeners
-btnAddWater.addEventListener('click', () => {
+document.getElementById('btn-add-water').addEventListener('click', () => {
     const ozToAdd = parseFloat(waterInput.value);
-    
     if (isNaN(ozToAdd) || ozToAdd <= 0) return; 
 
-    // Update total and round to 1 decimal place to prevent floating point bugs
     currentWater += ozToAdd;
-    currentWater = Math.round(currentWater * 10) / 10;
+    currentWater = Math.round(currentWater * 10) / 10; // Prevent float bugs
     
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
     waterLogs.unshift({ amount: ozToAdd, time: timeString });
     
-    saveWaterData();
+    const todayStr = new Date().toDateString();
+    waterHistory[todayStr] = currentWater;
+
+    saveToFirebase();
     renderWaterLogs();
     waterInput.value = '';
     updateWaterUI();
+    if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
 });
 
 function updateWaterUI() {
@@ -121,7 +204,6 @@ function updateWaterUI() {
     let visualFill = percentage > 100 ? 100 : percentage;
     waterFill.style.height = `${visualFill}%`;
 
-    // Personality Logic
     glassMouth.className = 'mouth';
     glassEyes.className = 'eyes';
     glassArm.classList.remove('waving');
@@ -160,60 +242,23 @@ function renderWaterLogs() {
 // ==========================================
 // --- PROTEIN TRACKER LOGIC ---
 // ==========================================
-const PROTEIN_GOAL = 165; 
-let currentProtein = 0;
-let proteinLogs = [];
-let favoriteMeals = [];
-
-// DOM Elements
 const proteinFillPath = document.getElementById('protein-fill-path');
 const textProteinPercentage = document.getElementById('protein-percentage');
 const textProteinCurrent = document.getElementById('protein-current');
 const textProteinRemaining = document.getElementById('protein-remaining');
-
 const mealSearch = document.getElementById('meal-search');
 const searchResults = document.getElementById('search-results');
 const mealNameInput = document.getElementById('meal-name');
 const proteinInput = document.getElementById('protein-input');
 const saveFavoriteCheckbox = document.getElementById('save-favorite');
-const btnAddProtein = document.getElementById('btn-add-protein');
 const proteinLogList = document.getElementById('protein-log-list');
 
-function initProteinTracker() {
-    const today = new Date().toDateString(); 
-    const savedDate = localStorage.getItem('vitality_protein_date');
-
-    if (savedDate !== today) {
-        currentProtein = 0;
-        proteinLogs = [];
-        localStorage.setItem('vitality_protein_date', today);
-        saveProteinData(); 
-    } else {
-        // Use parseFloat to support decimals
-        currentProtein = parseFloat(localStorage.getItem('vitality_protein_total')) || 0;
-        proteinLogs = JSON.parse(localStorage.getItem('vitality_protein_logs')) || [];
-    }
-    
-    favoriteMeals = JSON.parse(localStorage.getItem('vitality_favorite_meals')) || [];
-
-    renderProteinLogs();
-    updateProteinUI();
-}
-
-let saveProteinData = function() {
-    localStorage.setItem('vitality_protein_total', currentProtein);
-    localStorage.setItem('vitality_protein_logs', JSON.stringify(proteinLogs));
-    localStorage.setItem('vitality_favorite_meals', JSON.stringify(favoriteMeals));
-}
-
-// Log Protein Event
-btnAddProtein.addEventListener('click', () => {
+document.getElementById('btn-add-protein').addEventListener('click', () => {
     const mealName = mealNameInput.value.trim() || "Snack";
     const proteinGrams = parseFloat(proteinInput.value);
     
     if (isNaN(proteinGrams) || proteinGrams <= 0) return;
 
-    // Update total and round to 1 decimal place
     currentProtein += proteinGrams;
     currentProtein = Math.round(currentProtein * 10) / 10;
     
@@ -228,9 +273,13 @@ btnAddProtein.addEventListener('click', () => {
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     proteinLogs.unshift({ meal: mealName, amount: proteinGrams, time: timeString });
     
-    saveProteinData();
+    const todayStr = new Date().toDateString();
+    proteinHistory[todayStr] = currentProtein;
+
+    saveToFirebase();
     renderProteinLogs();
     updateProteinUI();
+    if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
     
     mealNameInput.value = '';
     proteinInput.value = '';
@@ -238,7 +287,7 @@ btnAddProtein.addEventListener('click', () => {
     saveFavoriteCheckbox.checked = false;
 });
 
-// Search / Auto-Populate Logic
+// Search Logic
 mealSearch.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     searchResults.innerHTML = '';
@@ -270,7 +319,6 @@ mealSearch.addEventListener('input', (e) => {
     }
 });
 
-// Hide search results if clicking outside
 document.addEventListener('click', (e) => {
     if (!mealSearch.contains(e.target) && !searchResults.contains(e.target)) {
         searchResults.classList.add('hidden');
@@ -302,37 +350,13 @@ function renderProteinLogs() {
 }
 
 // ==========================================
-// --- CHART.JS AND HISTORY LOGIC ---
+// --- CHART.JS LOGIC ---
 // ==========================================
-
-let waterHistory = JSON.parse(localStorage.getItem('vitality_water_history')) || {};
-let proteinHistory = JSON.parse(localStorage.getItem('vitality_protein_history')) || {};
-
-// Override save functions to record history
-const originalSaveWater = saveWaterData;
-saveWaterData = function() {
-    originalSaveWater(); 
-    const todayStr = new Date().toDateString();
-    waterHistory[todayStr] = currentWater; 
-    localStorage.setItem('vitality_water_history', JSON.stringify(waterHistory));
-    if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
-};
-
-const originalSaveProtein = saveProteinData;
-saveProteinData = function() {
-    originalSaveProtein(); 
-    const todayStr = new Date().toDateString();
-    proteinHistory[todayStr] = currentProtein; 
-    localStorage.setItem('vitality_protein_history', JSON.stringify(proteinHistory));
-    if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
-};
-
 Chart.defaults.color = '#94a3b8'; 
 Chart.defaults.font.family = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 let waterChartInstance = null;
 let proteinChartInstance = null;
-
 let waterViewMode = 7; 
 let proteinViewMode = 7;
 
@@ -348,10 +372,9 @@ function getLastNDays(n) {
     return { dates, labels };
 }
 
-function initChart(canvasId, color, glowColor, historyData, days) {
+function createChart(canvasId, color, glowColor, historyData, days) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     const timeData = getLastNDays(days);
-    
     const dataPoints = timeData.dates.map(date => historyData[date] || 0);
 
     return new Chart(ctx, {
@@ -390,20 +413,22 @@ function updateChart(chart, historyData, days) {
     chart.update();
 }
 
-// Initialize Charts and Load Data
-initWaterTracker();
-initProteinTracker();
-
-setTimeout(() => {
-    waterChartInstance = initChart('waterChart', '#0ea5e9', 'rgba(14, 165, 233, 0.1)', waterHistory, waterViewMode);
-    proteinChartInstance = initChart('proteinChart', '#d946ef', 'rgba(217, 70, 239, 0.1)', proteinHistory, proteinViewMode);
+function initAllCharts() {
+    // Only init if they don't exist yet
+    if (!waterChartInstance) {
+        waterChartInstance = createChart('waterChart', '#0ea5e9', 'rgba(14, 165, 233, 0.1)', waterHistory, waterViewMode);
+    } else {
+        updateChart(waterChartInstance, waterHistory, waterViewMode);
+    }
     
-    // Ensure initial state is saved to history for today
-    saveWaterData();
-    saveProteinData();
-}, 100);
+    if (!proteinChartInstance) {
+        proteinChartInstance = createChart('proteinChart', '#d946ef', 'rgba(217, 70, 239, 0.1)', proteinHistory, proteinViewMode);
+    } else {
+        updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+    }
+}
 
-// Toggle Listeners
+// Chart Toggle Listeners
 document.getElementById('water-week-btn').addEventListener('click', (e) => {
     waterViewMode = 7;
     e.target.classList.add('active');
