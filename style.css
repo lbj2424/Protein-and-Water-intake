@@ -448,3 +448,51 @@ input[type="number"]:focus {
     width: 16px;
     height: 16px;
 }
+/* --- Graph Sections --- */
+.chart-section {
+    width: 100%;
+    margin-top: 1.5rem;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 5px;
+}
+
+.chart-header h3 {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.chart-toggles {
+    display: flex;
+    gap: 8px;
+}
+
+.toggle-btn {
+    background: transparent;
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.toggle-btn.active {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-main);
+    border-color: var(--text-main);
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 200px; /* Keeps the graph from getting too tall on desktop */
+}
