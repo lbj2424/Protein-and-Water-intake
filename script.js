@@ -19,11 +19,29 @@ const db = getFirestore(app);
 const docRef = doc(db, "vitality", "my_data");
 
 // ==========================================
-// --- TIMEZONE UTILITY (MOUNTAIN TIME) ---
+// --- TIMEZONE & MIGRATION UTILITY ---
 // ==========================================
-// This forces the date string to evaluate in Mountain Time regardless of device timezone
+// Forces the date string to evaluate in Mountain Time regardless of device timezone
 function getMTDateString(dateObj = new Date()) {
     return dateObj.toLocaleDateString('en-US', { timeZone: 'America/Denver' });
+}
+
+// Translates old date formats (Mon Feb 23 2026) to new formats (2/23/2026)
+function migrateHistoryDates(historyObj) {
+    let updatedHistory = {};
+    for (let oldDate in historyObj) {
+        // If the date string has letters (like 'Mon' or 'Feb'), it's the old format
+        if (/[a-zA-Z]/.test(oldDate)) {
+            let convertedDate = new Date(oldDate).toLocaleDateString('en-US', { timeZone: 'America/Denver' });
+            // Only overwrite if it doesn't already exist to prevent issues
+            if (!updatedHistory[convertedDate]) {
+                updatedHistory[convertedDate] = historyObj[oldDate];
+            }
+        } else {
+            updatedHistory[oldDate] = historyObj[oldDate];
+        }
+    }
+    return updatedHistory;
 }
 
 // ==========================================
@@ -112,11 +130,15 @@ async function loadDataAndInit() {
 
         currentWater = dbData.waterTotal;
         waterLogs = dbData.waterLogs || [];
-        waterHistory = dbData.waterHistory || {};
+        
+        // Pass the history through our new translator function
+        waterHistory = migrateHistoryDates(dbData.waterHistory || {});
 
         currentProtein = dbData.proteinTotal;
         proteinLogs = dbData.proteinLogs || [];
-        proteinHistory = dbData.proteinHistory || {};
+        
+        // Pass the history through our new translator function
+        proteinHistory = migrateHistoryDates(dbData.proteinHistory || {});
         favoriteMeals = dbData.favoriteMeals || [];
 
         renderWaterLogs();
