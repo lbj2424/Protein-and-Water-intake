@@ -83,13 +83,17 @@ const PROTEIN_GOAL = 165;
 let currentWater = 0;
 let waterLogs = []; 
 let waterHistory = {};
-let waterArchive = {}; // NEW: Permanent storage for historical daily water logs
+let waterArchive = {}; 
 
 let currentProtein = 0;
 let proteinLogs = [];
 let favoriteMeals = [];
 let proteinHistory = {};
-let proteinArchive = {}; // NEW: Permanent storage for historical daily protein logs
+let proteinArchive = {}; 
+
+// Streak UI Elements
+const streakDisplay = document.getElementById('streak-display');
+const streakCountText = document.getElementById('streak-count');
 
 async function loadDataAndInit() {
     try {
@@ -142,6 +146,7 @@ async function loadDataAndInit() {
         updateWaterUI();
         renderProteinLogs();
         updateProteinUI();
+        updateStreak(); // Calculate streak on load
 
         initAllCharts();
         saveToFirebase();
@@ -157,19 +162,55 @@ async function saveToFirebase() {
         waterTotal: currentWater,
         waterLogs: waterLogs,
         waterHistory: waterHistory,
-        waterArchive: waterArchive, // NEW
+        waterArchive: waterArchive, 
         
         proteinDate: getMTDateString(),
         proteinTotal: currentProtein,
         proteinLogs: proteinLogs,
         proteinHistory: proteinHistory,
-        proteinArchive: proteinArchive, // NEW
+        proteinArchive: proteinArchive, 
         favoriteMeals: favoriteMeals
     };
     try {
         await setDoc(docRef, dbData);
     } catch(e) {
         console.error("Error saving to Firebase:", e);
+    }
+}
+
+// --- NEW STREAK LOGIC ---
+function updateStreak() {
+    let streak = 0;
+    
+    // 1. Check if both goals are met today
+    let todayMet = (currentWater >= WATER_GOAL) && (currentProtein >= PROTEIN_GOAL);
+    if (todayMet) streak++;
+
+    // 2. Look backward day-by-day starting from yesterday
+    let checkDate = new Date();
+    checkDate.setDate(checkDate.getDate() - 1); // Set to yesterday
+
+    while (true) {
+        let dateStr = getMTDateString(checkDate);
+        let w = waterHistory[dateStr] || 0;
+        let p = proteinHistory[dateStr] || 0;
+
+        // If both goals were met on this historical date, increase streak
+        if (w >= WATER_GOAL && p >= PROTEIN_GOAL) {
+            streak++;
+            checkDate.setDate(checkDate.getDate() - 1); // Move backward another day
+        } else {
+            // The streak was broken! Stop counting.
+            break; 
+        }
+    }
+
+    // 3. Update the UI Badge
+    streakCountText.innerText = streak;
+    if (streak > 0) {
+        streakDisplay.classList.remove('inactive');
+    } else {
+        streakDisplay.classList.add('inactive');
     }
 }
 
@@ -202,12 +243,13 @@ document.getElementById('btn-add-water').addEventListener('click', () => {
     
     const todayStr = getMTDateString();
     waterHistory[todayStr] = currentWater;
-    waterArchive[todayStr] = waterLogs; // NEW: Save a snapshot to the archive
+    waterArchive[todayStr] = waterLogs; 
 
     saveToFirebase();
     renderWaterLogs();
     waterInput.value = '';
     updateWaterUI();
+    updateStreak(); // Update streak visually
     if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
 });
 
@@ -275,11 +317,12 @@ function renderWaterLogs() {
 
             const todayStr = getMTDateString();
             waterHistory[todayStr] = currentWater;
-            waterArchive[todayStr] = waterLogs; // NEW: Update the archive snapshot
+            waterArchive[todayStr] = waterLogs; 
 
             saveToFirebase();
             renderWaterLogs();
             updateWaterUI();
+            updateStreak(); // Recalculate streak if they edited/deleted
             if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
         });
 
@@ -323,11 +366,12 @@ document.getElementById('btn-add-protein').addEventListener('click', () => {
     
     const todayStr = getMTDateString();
     proteinHistory[todayStr] = currentProtein;
-    proteinArchive[todayStr] = proteinLogs; // NEW: Save snapshot to archive
+    proteinArchive[todayStr] = proteinLogs; 
 
     saveToFirebase();
     renderProteinLogs();
     updateProteinUI();
+    updateStreak(); // Update streak visually
     if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
     
     mealNameInput.value = '';
@@ -415,17 +459,19 @@ function renderProteinLogs() {
 
             const todayStr = getMTDateString();
             proteinHistory[todayStr] = currentProtein;
-            proteinArchive[todayStr] = proteinLogs; // NEW: Update archive snapshot
+            proteinArchive[todayStr] = proteinLogs; 
 
             saveToFirebase();
             renderProteinLogs();
             updateProteinUI();
+            updateStreak(); // Recalculate streak if they edited/deleted
             if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
         });
 
         proteinLogList.appendChild(li);
     });
 }
+
 // ==========================================
 // --- CHART.JS & MODAL LOGIC ---
 // ==========================================
@@ -446,7 +492,7 @@ const modalLogList = document.getElementById('modal-log-list');
 // Close Modal Listeners
 closeModalBtn.addEventListener('click', () => historyModal.classList.add('hidden'));
 historyModal.addEventListener('click', (e) => {
-    if (e.target === historyModal) historyModal.classList.add('hidden'); // Close if clicking background
+    if (e.target === historyModal) historyModal.classList.add('hidden'); 
 });
 
 function getLastNDays(n) {
@@ -478,7 +524,7 @@ function createChart(canvasId, color, glowColor, historyData, days) {
                 borderWidth: 2,
                 pointBackgroundColor: color,
                 pointRadius: 4,
-                pointHoverRadius: 6, // Make it pop when hovering
+                pointHoverRadius: 6, 
                 fill: true,
                 tension: 0.3 
             }]
@@ -491,28 +537,23 @@ function createChart(canvasId, color, glowColor, historyData, days) {
                 y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                 x: { grid: { display: false } }
             },
-            // We save the raw date keys in the options so we can look them up when clicked
             dateKeys: timeData.dates,
             
-            // --- CLICK EVENT FOR MODAL ---
             onClick: (event, elements, chart) => {
                 if (elements.length > 0) {
                     const dataIndex = elements[0].index;
                     const clickedDate = chart.config.options.dateKeys[dataIndex];
                     const displayLabel = chart.data.labels[dataIndex];
                     
-                    // Determine which graph we clicked
                     const isProtein = chart.canvas.id === 'proteinChart';
                     const archive = isProtein ? proteinArchive : waterArchive;
                     const themeColor = isProtein ? 'var(--neon-purple)' : 'var(--neon-blue)';
                     const themeGlow = isProtein ? 'var(--neon-purple-glow)' : 'var(--neon-blue-glow)';
                     
-                    // Style the modal dynamically
                     document.querySelector('.modal-content').style.borderColor = themeColor;
                     document.querySelector('.modal-content').style.boxShadow = `0 0 20px ${themeGlow}`;
                     modalTitle.innerText = `Logs for ${displayLabel}`;
                     
-                    // Populate the list
                     modalLogList.innerHTML = '';
                     const archivedLogs = archive[clickedDate] || [];
                     
@@ -531,7 +572,6 @@ function createChart(canvasId, color, glowColor, historyData, days) {
                         });
                     }
                     
-                    // Show modal
                     historyModal.classList.remove('hidden');
                 }
             }
@@ -544,7 +584,7 @@ function updateChart(chart, historyData, days) {
     const dataPoints = timeData.dates.map(date => historyData[date] || 0);
     chart.data.labels = timeData.labels;
     chart.data.datasets[0].data = dataPoints;
-    chart.config.options.dateKeys = timeData.dates; // Update keys for clicks
+    chart.config.options.dateKeys = timeData.dates; 
     chart.update();
 }
 
