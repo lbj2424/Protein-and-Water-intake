@@ -332,6 +332,12 @@ input[type="number"]:focus {
     display: flex;
     justify-content: space-between;
     font-size: 0.9rem;
+    cursor: pointer; /* Makes it look clickable */
+    transition: background 0.2s;
+}
+
+.log-item:hover {
+    background: rgba(255,255,255,0.15); /* Lights up when tapped/hovered */
 }
 /* --- Protein View Layout --- */
 .protein-layout {
