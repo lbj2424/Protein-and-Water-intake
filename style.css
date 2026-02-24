@@ -566,3 +566,50 @@ input[type="number"]:focus {
     padding-bottom: 0.8rem;
     color: var(--text-main);
 }
+
+/* ==========================================
+   --- STREAK COUNTER STYLES ---
+   ========================================== */
+.streak-container {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(249, 115, 22, 0.15); /* Subtle neon orange bg */
+    border: 1px solid rgba(249, 115, 22, 0.5);
+    padding: 0.6rem 1.2rem;
+    border-radius: 30px;
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.2);
+    transition: all 0.3s ease;
+}
+
+.streak-fire {
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 8px rgba(249,115,22,0.8));
+}
+
+.streak-number {
+    color: #f97316; /* Bright neon orange */
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+/* Grayscale/Dimmed look for 0 streak */
+.streak-container.inactive {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    box-shadow: none;
+}
+
+.streak-container.inactive .streak-fire {
+    filter: grayscale(100%);
+    opacity: 0.3;
+}
+
+.streak-container.inactive .streak-number {
+    color: var(--text-muted);
+}
