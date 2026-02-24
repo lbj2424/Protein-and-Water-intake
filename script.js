@@ -21,19 +21,15 @@ const docRef = doc(db, "vitality", "my_data");
 // ==========================================
 // --- TIMEZONE & MIGRATION UTILITY ---
 // ==========================================
-// Forces the date string to evaluate in Mountain Time regardless of device timezone
 function getMTDateString(dateObj = new Date()) {
     return dateObj.toLocaleDateString('en-US', { timeZone: 'America/Denver' });
 }
 
-// Translates old date formats (Mon Feb 23 2026) to new formats (2/23/2026)
 function migrateHistoryDates(historyObj) {
     let updatedHistory = {};
     for (let oldDate in historyObj) {
-        // If the date string has letters (like 'Mon' or 'Feb'), it's the old format
         if (/[a-zA-Z]/.test(oldDate)) {
             let convertedDate = new Date(oldDate).toLocaleDateString('en-US', { timeZone: 'America/Denver' });
-            // Only overwrite if it doesn't already exist to prevent issues
             if (!updatedHistory[convertedDate]) {
                 updatedHistory[convertedDate] = historyObj[oldDate];
             }
@@ -87,11 +83,13 @@ const PROTEIN_GOAL = 165;
 let currentWater = 0;
 let waterLogs = []; 
 let waterHistory = {};
+let waterArchive = {}; // NEW: Permanent storage for historical daily water logs
 
 let currentProtein = 0;
 let proteinLogs = [];
 let favoriteMeals = [];
 let proteinHistory = {};
+let proteinArchive = {}; // NEW: Permanent storage for historical daily protein logs
 
 async function loadDataAndInit() {
     try {
@@ -106,16 +104,17 @@ async function loadDataAndInit() {
                 waterTotal: parseFloat(localStorage.getItem('vitality_water_total')) || 0,
                 waterLogs: JSON.parse(localStorage.getItem('vitality_water_logs')) || [],
                 waterHistory: JSON.parse(localStorage.getItem('vitality_water_history')) || {},
+                waterArchive: {},
                 
                 proteinDate: localStorage.getItem('vitality_protein_date') || "",
                 proteinTotal: parseFloat(localStorage.getItem('vitality_protein_total')) || 0,
                 proteinLogs: JSON.parse(localStorage.getItem('vitality_protein_logs')) || [],
                 proteinHistory: JSON.parse(localStorage.getItem('vitality_protein_history')) || {},
+                proteinArchive: {},
                 favoriteMeals: JSON.parse(localStorage.getItem('vitality_favorite_meals')) || []
             };
         }
 
-        // Midnight Resets using Mountain Time
         const todayMT = getMTDateString();
         if (dbData.waterDate !== todayMT) {
             dbData.waterTotal = 0;
@@ -130,15 +129,13 @@ async function loadDataAndInit() {
 
         currentWater = dbData.waterTotal;
         waterLogs = dbData.waterLogs || [];
-        
-        // Pass the history through our new translator function
         waterHistory = migrateHistoryDates(dbData.waterHistory || {});
+        waterArchive = dbData.waterArchive || {};
 
         currentProtein = dbData.proteinTotal;
         proteinLogs = dbData.proteinLogs || [];
-        
-        // Pass the history through our new translator function
         proteinHistory = migrateHistoryDates(dbData.proteinHistory || {});
+        proteinArchive = dbData.proteinArchive || {};
         favoriteMeals = dbData.favoriteMeals || [];
 
         renderWaterLogs();
@@ -160,11 +157,13 @@ async function saveToFirebase() {
         waterTotal: currentWater,
         waterLogs: waterLogs,
         waterHistory: waterHistory,
+        waterArchive: waterArchive, // NEW
         
         proteinDate: getMTDateString(),
         proteinTotal: currentProtein,
         proteinLogs: proteinLogs,
         proteinHistory: proteinHistory,
+        proteinArchive: proteinArchive, // NEW
         favoriteMeals: favoriteMeals
     };
     try {
@@ -198,12 +197,12 @@ document.getElementById('btn-add-water').addEventListener('click', () => {
     currentWater = Math.round(currentWater * 10) / 10; 
     
     const now = new Date();
-    // Keep local time for the display stamp
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     waterLogs.unshift({ amount: ozToAdd, time: timeString });
     
     const todayStr = getMTDateString();
     waterHistory[todayStr] = currentWater;
+    waterArchive[todayStr] = waterLogs; // NEW: Save a snapshot to the archive
 
     saveToFirebase();
     renderWaterLogs();
@@ -256,10 +255,9 @@ function renderWaterLogs() {
         li.className = 'log-item';
         li.innerHTML = `<span>💧 ${log.amount} oz</span> <span class="text-muted">${log.time}</span>`;
         
-        // Edit or Delete Logic
         li.addEventListener('click', () => {
             let newAmount = prompt(`Update amount for this entry (oz).\nEnter 0 to delete it completely:`, log.amount);
-            if (newAmount === null) return; // User clicked Cancel
+            if (newAmount === null) return; 
             
             newAmount = parseFloat(newAmount);
             if (isNaN(newAmount) || newAmount < 0) return;
@@ -267,16 +265,17 @@ function renderWaterLogs() {
             let diff = newAmount - log.amount;
             currentWater += diff;
             currentWater = Math.round(currentWater * 10) / 10;
-            if (currentWater < 0) currentWater = 0; // Sanity check
+            if (currentWater < 0) currentWater = 0; 
 
             if (newAmount === 0) {
-                waterLogs.splice(index, 1); // Remove from array
+                waterLogs.splice(index, 1); 
             } else {
-                waterLogs[index].amount = newAmount; // Update array
+                waterLogs[index].amount = newAmount; 
             }
 
             const todayStr = getMTDateString();
             waterHistory[todayStr] = currentWater;
+            waterArchive[todayStr] = waterLogs; // NEW: Update the archive snapshot
 
             saveToFirebase();
             renderWaterLogs();
@@ -324,6 +323,7 @@ document.getElementById('btn-add-protein').addEventListener('click', () => {
     
     const todayStr = getMTDateString();
     proteinHistory[todayStr] = currentProtein;
+    proteinArchive[todayStr] = proteinLogs; // NEW: Save snapshot to archive
 
     saveToFirebase();
     renderProteinLogs();
@@ -395,10 +395,9 @@ function renderProteinLogs() {
         li.className = 'log-item';
         li.innerHTML = `<span>🥩 ${log.meal} - <strong style="color:var(--neon-purple);">${log.amount}g</strong></span> <span class="text-muted">${log.time}</span>`;
         
-        // Edit or Delete Logic
         li.addEventListener('click', () => {
             let newAmount = prompt(`Update grams for ${log.meal}.\nEnter 0 to delete it completely:`, log.amount);
-            if (newAmount === null) return; // User clicked Cancel
+            if (newAmount === null) return; 
             
             newAmount = parseFloat(newAmount);
             if (isNaN(newAmount) || newAmount < 0) return;
@@ -406,16 +405,17 @@ function renderProteinLogs() {
             let diff = newAmount - log.amount;
             currentProtein += diff;
             currentProtein = Math.round(currentProtein * 10) / 10;
-            if (currentProtein < 0) currentProtein = 0; // Sanity check
+            if (currentProtein < 0) currentProtein = 0; 
 
             if (newAmount === 0) {
-                proteinLogs.splice(index, 1); // Remove from array
+                proteinLogs.splice(index, 1); 
             } else {
-                proteinLogs[index].amount = newAmount; // Update array
+                proteinLogs[index].amount = newAmount; 
             }
 
             const todayStr = getMTDateString();
             proteinHistory[todayStr] = currentProtein;
+            proteinArchive[todayStr] = proteinLogs; // NEW: Update archive snapshot
 
             saveToFirebase();
             renderProteinLogs();
@@ -444,7 +444,6 @@ function getLastNDays(n) {
     for (let i = n - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        // Force Mountain Time for historical lookup
         dates.push(getMTDateString(d));
         labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Denver' }));
     }
