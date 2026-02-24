@@ -426,9 +426,8 @@ function renderProteinLogs() {
         proteinLogList.appendChild(li);
     });
 }
-
 // ==========================================
-// --- CHART.JS LOGIC ---
+// --- CHART.JS & MODAL LOGIC ---
 // ==========================================
 Chart.defaults.color = '#94a3b8'; 
 Chart.defaults.font.family = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -437,6 +436,18 @@ let waterChartInstance = null;
 let proteinChartInstance = null;
 let waterViewMode = 7; 
 let proteinViewMode = 7;
+
+// Modal Elements
+const historyModal = document.getElementById('history-modal');
+const closeModalBtn = document.getElementById('close-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalLogList = document.getElementById('modal-log-list');
+
+// Close Modal Listeners
+closeModalBtn.addEventListener('click', () => historyModal.classList.add('hidden'));
+historyModal.addEventListener('click', (e) => {
+    if (e.target === historyModal) historyModal.classList.add('hidden'); // Close if clicking background
+});
 
 function getLastNDays(n) {
     const dates = [];
@@ -466,7 +477,8 @@ function createChart(canvasId, color, glowColor, historyData, days) {
                 backgroundColor: glowColor,
                 borderWidth: 2,
                 pointBackgroundColor: color,
-                pointRadius: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6, // Make it pop when hovering
                 fill: true,
                 tension: 0.3 
             }]
@@ -478,6 +490,50 @@ function createChart(canvasId, color, glowColor, historyData, days) {
             scales: {
                 y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
                 x: { grid: { display: false } }
+            },
+            // We save the raw date keys in the options so we can look them up when clicked
+            dateKeys: timeData.dates,
+            
+            // --- CLICK EVENT FOR MODAL ---
+            onClick: (event, elements, chart) => {
+                if (elements.length > 0) {
+                    const dataIndex = elements[0].index;
+                    const clickedDate = chart.config.options.dateKeys[dataIndex];
+                    const displayLabel = chart.data.labels[dataIndex];
+                    
+                    // Determine which graph we clicked
+                    const isProtein = chart.canvas.id === 'proteinChart';
+                    const archive = isProtein ? proteinArchive : waterArchive;
+                    const themeColor = isProtein ? 'var(--neon-purple)' : 'var(--neon-blue)';
+                    const themeGlow = isProtein ? 'var(--neon-purple-glow)' : 'var(--neon-blue-glow)';
+                    
+                    // Style the modal dynamically
+                    document.querySelector('.modal-content').style.borderColor = themeColor;
+                    document.querySelector('.modal-content').style.boxShadow = `0 0 20px ${themeGlow}`;
+                    modalTitle.innerText = `Logs for ${displayLabel}`;
+                    
+                    // Populate the list
+                    modalLogList.innerHTML = '';
+                    const archivedLogs = archive[clickedDate] || [];
+                    
+                    if (archivedLogs.length === 0) {
+                        modalLogList.innerHTML = `<li class="log-item" style="justify-content:center; color: var(--text-muted);">No detailed logs saved for this date.</li>`;
+                    } else {
+                        archivedLogs.forEach(log => {
+                            const li = document.createElement('li');
+                            li.className = 'log-item';
+                            if (isProtein) {
+                                li.innerHTML = `<span>🥩 ${log.meal} - <strong style="color:${themeColor};">${log.amount}g</strong></span> <span class="text-muted">${log.time}</span>`;
+                            } else {
+                                li.innerHTML = `<span>💧 ${log.amount} oz</span> <span class="text-muted">${log.time}</span>`;
+                            }
+                            modalLogList.appendChild(li);
+                        });
+                    }
+                    
+                    // Show modal
+                    historyModal.classList.remove('hidden');
+                }
             }
         }
     });
@@ -488,6 +544,7 @@ function updateChart(chart, historyData, days) {
     const dataPoints = timeData.dates.map(date => historyData[date] || 0);
     chart.data.labels = timeData.labels;
     chart.data.datasets[0].data = dataPoints;
+    chart.config.options.dateKeys = timeData.dates; // Update keys for clicks
     chart.update();
 }
 
