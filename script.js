@@ -4,7 +4,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// Your exact Firebase config
 const firebaseConfig = {
     apiKey: "AIzaSyD8bcn0jx_qBku1vM-bPpMlzChdzDlOCas",
     authDomain: "protein-and-water.firebaseapp.com",
@@ -15,12 +14,17 @@ const firebaseConfig = {
     measurementId: "G-GZ8C4SHG4M"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// We will save all your stats into one document called "my_data"
 const docRef = doc(db, "vitality", "my_data");
+
+// ==========================================
+// --- TIMEZONE UTILITY (MOUNTAIN TIME) ---
+// ==========================================
+// This forces the date string to evaluate in Mountain Time regardless of device timezone
+function getMTDateString(dateObj = new Date()) {
+    return dateObj.toLocaleDateString('en-US', { timeZone: 'America/Denver' });
+}
 
 // ==========================================
 // --- NAVIGATION LOGIC ---
@@ -50,7 +54,6 @@ document.getElementById('btn-go-protein').addEventListener('click', () => {
     proteinView.classList.add('active');
 });
 
-// Attach to window so HTML buttons can still find it inside this module
 window.goHome = function() {
     hideAllViews();
     mainView.classList.remove('hidden');
@@ -72,7 +75,6 @@ let proteinLogs = [];
 let favoriteMeals = [];
 let proteinHistory = {};
 
-// Load data from Firebase when the app starts
 async function loadDataAndInit() {
     try {
         const docSnap = await getDoc(docRef);
@@ -81,7 +83,6 @@ async function loadDataAndInit() {
         if (docSnap.exists()) {
             dbData = docSnap.data();
         } else {
-            // First time on Firebase? Migrate local storage so you don't lose data!
             dbData = {
                 waterDate: localStorage.getItem('vitality_date') || "",
                 waterTotal: parseFloat(localStorage.getItem('vitality_water_total')) || 0,
@@ -96,20 +97,19 @@ async function loadDataAndInit() {
             };
         }
 
-        // Midnight Resets
-        const today = new Date().toDateString();
-        if (dbData.waterDate !== today) {
+        // Midnight Resets using Mountain Time
+        const todayMT = getMTDateString();
+        if (dbData.waterDate !== todayMT) {
             dbData.waterTotal = 0;
             dbData.waterLogs = [];
-            dbData.waterDate = today;
+            dbData.waterDate = todayMT;
         }
-        if (dbData.proteinDate !== today) {
+        if (dbData.proteinDate !== todayMT) {
             dbData.proteinTotal = 0;
             dbData.proteinLogs = [];
-            dbData.proteinDate = today;
+            dbData.proteinDate = todayMT;
         }
 
-        // Apply loaded data to our app
         currentWater = dbData.waterTotal;
         waterLogs = dbData.waterLogs || [];
         waterHistory = dbData.waterHistory || {};
@@ -119,13 +119,11 @@ async function loadDataAndInit() {
         proteinHistory = dbData.proteinHistory || {};
         favoriteMeals = dbData.favoriteMeals || [];
 
-        // Update UI
         renderWaterLogs();
         updateWaterUI();
         renderProteinLogs();
         updateProteinUI();
 
-        // Init Charts & Save to lock in the daily history
         initAllCharts();
         saveToFirebase();
 
@@ -136,12 +134,12 @@ async function loadDataAndInit() {
 
 async function saveToFirebase() {
     const dbData = {
-        waterDate: new Date().toDateString(),
+        waterDate: getMTDateString(),
         waterTotal: currentWater,
         waterLogs: waterLogs,
         waterHistory: waterHistory,
         
-        proteinDate: new Date().toDateString(),
+        proteinDate: getMTDateString(),
         proteinTotal: currentProtein,
         proteinLogs: proteinLogs,
         proteinHistory: proteinHistory,
@@ -154,7 +152,6 @@ async function saveToFirebase() {
     }
 }
 
-// Start the app!
 loadDataAndInit();
 
 // ==========================================
@@ -176,13 +173,14 @@ document.getElementById('btn-add-water').addEventListener('click', () => {
     if (isNaN(ozToAdd) || ozToAdd <= 0) return; 
 
     currentWater += ozToAdd;
-    currentWater = Math.round(currentWater * 10) / 10; // Prevent float bugs
+    currentWater = Math.round(currentWater * 10) / 10; 
     
     const now = new Date();
+    // Keep local time for the display stamp
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     waterLogs.unshift({ amount: ozToAdd, time: timeString });
     
-    const todayStr = new Date().toDateString();
+    const todayStr = getMTDateString();
     waterHistory[todayStr] = currentWater;
 
     saveToFirebase();
@@ -231,10 +229,39 @@ function updateWaterUI() {
 
 function renderWaterLogs() {
     logList.innerHTML = ''; 
-    waterLogs.forEach(log => {
+    waterLogs.forEach((log, index) => {
         const li = document.createElement('li');
         li.className = 'log-item';
         li.innerHTML = `<span>💧 ${log.amount} oz</span> <span class="text-muted">${log.time}</span>`;
+        
+        // Edit or Delete Logic
+        li.addEventListener('click', () => {
+            let newAmount = prompt(`Update amount for this entry (oz).\nEnter 0 to delete it completely:`, log.amount);
+            if (newAmount === null) return; // User clicked Cancel
+            
+            newAmount = parseFloat(newAmount);
+            if (isNaN(newAmount) || newAmount < 0) return;
+
+            let diff = newAmount - log.amount;
+            currentWater += diff;
+            currentWater = Math.round(currentWater * 10) / 10;
+            if (currentWater < 0) currentWater = 0; // Sanity check
+
+            if (newAmount === 0) {
+                waterLogs.splice(index, 1); // Remove from array
+            } else {
+                waterLogs[index].amount = newAmount; // Update array
+            }
+
+            const todayStr = getMTDateString();
+            waterHistory[todayStr] = currentWater;
+
+            saveToFirebase();
+            renderWaterLogs();
+            updateWaterUI();
+            if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
+        });
+
         logList.appendChild(li);
     });
 }
@@ -273,7 +300,7 @@ document.getElementById('btn-add-protein').addEventListener('click', () => {
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     proteinLogs.unshift({ meal: mealName, amount: proteinGrams, time: timeString });
     
-    const todayStr = new Date().toDateString();
+    const todayStr = getMTDateString();
     proteinHistory[todayStr] = currentProtein;
 
     saveToFirebase();
@@ -341,10 +368,39 @@ function updateProteinUI() {
 
 function renderProteinLogs() {
     proteinLogList.innerHTML = ''; 
-    proteinLogs.forEach(log => {
+    proteinLogs.forEach((log, index) => {
         const li = document.createElement('li');
         li.className = 'log-item';
         li.innerHTML = `<span>🥩 ${log.meal} - <strong style="color:var(--neon-purple);">${log.amount}g</strong></span> <span class="text-muted">${log.time}</span>`;
+        
+        // Edit or Delete Logic
+        li.addEventListener('click', () => {
+            let newAmount = prompt(`Update grams for ${log.meal}.\nEnter 0 to delete it completely:`, log.amount);
+            if (newAmount === null) return; // User clicked Cancel
+            
+            newAmount = parseFloat(newAmount);
+            if (isNaN(newAmount) || newAmount < 0) return;
+
+            let diff = newAmount - log.amount;
+            currentProtein += diff;
+            currentProtein = Math.round(currentProtein * 10) / 10;
+            if (currentProtein < 0) currentProtein = 0; // Sanity check
+
+            if (newAmount === 0) {
+                proteinLogs.splice(index, 1); // Remove from array
+            } else {
+                proteinLogs[index].amount = newAmount; // Update array
+            }
+
+            const todayStr = getMTDateString();
+            proteinHistory[todayStr] = currentProtein;
+
+            saveToFirebase();
+            renderProteinLogs();
+            updateProteinUI();
+            if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+        });
+
         proteinLogList.appendChild(li);
     });
 }
@@ -366,8 +422,9 @@ function getLastNDays(n) {
     for (let i = n - 1; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        dates.push(d.toDateString());
-        labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        // Force Mountain Time for historical lookup
+        dates.push(getMTDateString(d));
+        labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Denver' }));
     }
     return { dates, labels };
 }
@@ -414,7 +471,6 @@ function updateChart(chart, historyData, days) {
 }
 
 function initAllCharts() {
-    // Only init if they don't exist yet
     if (!waterChartInstance) {
         waterChartInstance = createChart('waterChart', '#0ea5e9', 'rgba(14, 165, 233, 0.1)', waterHistory, waterViewMode);
     } else {
