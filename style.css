@@ -282,6 +282,73 @@ header {
     100% { transform: rotate(40deg); }
 }
 
+/* --- Quick-Add Water Buttons --- */
+.quick-add-group {
+    display: flex;
+    gap: 8px;
+}
+
+.quick-add-btn {
+    flex: 1;
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    padding: 12px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: all 0.15s ease;
+}
+
+.quick-add-btn:hover, .quick-add-btn:active {
+    background: var(--neon-blue);
+    color: #000;
+}
+
+/* --- Danger Button (Delete) --- */
+.danger-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid #ef4444;
+    color: #ef4444;
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.danger-btn:hover, .danger-btn:active {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* --- Edit Modal Fields --- */
+.edit-label {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    margin-top: 12px;
+}
+
+#edit-water-amount, #edit-meal-name-input, #edit-protein-amount {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--text-muted);
+    color: var(--text-main);
+    padding: 0.8rem;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+#edit-water-amount:focus, #edit-meal-name-input:focus, #edit-protein-amount:focus {
+    outline: none;
+    border-color: var(--neon-blue);
+}
+
 /* --- Stats & Inputs --- */
 .stats-container { text-align: center; }
 .highlight { color: var(--neon-blue); font-weight: bold; }

@@ -297,34 +297,7 @@ function renderWaterLogs() {
         li.className = 'log-item';
         li.innerHTML = `<span>💧 ${log.amount} oz</span> <span class="text-muted">${log.time}</span>`;
         
-        li.addEventListener('click', () => {
-            let newAmount = prompt(`Update amount for this entry (oz).\nEnter 0 to delete it completely:`, log.amount);
-            if (newAmount === null) return; 
-            
-            newAmount = parseFloat(newAmount);
-            if (isNaN(newAmount) || newAmount < 0) return;
-
-            let diff = newAmount - log.amount;
-            currentWater += diff;
-            currentWater = Math.round(currentWater * 10) / 10;
-            if (currentWater < 0) currentWater = 0; 
-
-            if (newAmount === 0) {
-                waterLogs.splice(index, 1); 
-            } else {
-                waterLogs[index].amount = newAmount; 
-            }
-
-            const todayStr = getMTDateString();
-            waterHistory[todayStr] = currentWater;
-            waterArchive[todayStr] = waterLogs; 
-
-            saveToFirebase();
-            renderWaterLogs();
-            updateWaterUI();
-            updateStreak(); // Recalculate streak if they edited/deleted
-            if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
-        });
+        li.addEventListener('click', () => openEditModal('water', index));
 
         logList.appendChild(li);
     });
@@ -439,34 +412,7 @@ function renderProteinLogs() {
         li.className = 'log-item';
         li.innerHTML = `<span>🥩 ${log.meal} - <strong style="color:var(--neon-purple);">${log.amount}g</strong></span> <span class="text-muted">${log.time}</span>`;
         
-        li.addEventListener('click', () => {
-            let newAmount = prompt(`Update grams for ${log.meal}.\nEnter 0 to delete it completely:`, log.amount);
-            if (newAmount === null) return; 
-            
-            newAmount = parseFloat(newAmount);
-            if (isNaN(newAmount) || newAmount < 0) return;
-
-            let diff = newAmount - log.amount;
-            currentProtein += diff;
-            currentProtein = Math.round(currentProtein * 10) / 10;
-            if (currentProtein < 0) currentProtein = 0; 
-
-            if (newAmount === 0) {
-                proteinLogs.splice(index, 1); 
-            } else {
-                proteinLogs[index].amount = newAmount; 
-            }
-
-            const todayStr = getMTDateString();
-            proteinHistory[todayStr] = currentProtein;
-            proteinArchive[todayStr] = proteinLogs; 
-
-            saveToFirebase();
-            renderProteinLogs();
-            updateProteinUI();
-            updateStreak(); // Recalculate streak if they edited/deleted
-            if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
-        });
+        li.addEventListener('click', () => openEditModal('protein', index));
 
         proteinLogList.appendChild(li);
     });
@@ -629,4 +575,164 @@ document.getElementById('protein-month-btn').addEventListener('click', (e) => {
     e.target.classList.add('active');
     document.getElementById('protein-week-btn').classList.remove('active');
     updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+});
+
+// ==========================================
+// --- QUICK-ADD WATER BUTTONS ---
+// ==========================================
+document.querySelectorAll('.quick-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const oz = parseFloat(btn.dataset.oz);
+        currentWater += oz;
+        currentWater = Math.round(currentWater * 10) / 10;
+
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        waterLogs.unshift({ amount: oz, time: timeString });
+
+        const todayStr = getMTDateString();
+        waterHistory[todayStr] = currentWater;
+        waterArchive[todayStr] = waterLogs;
+
+        saveToFirebase();
+        renderWaterLogs();
+        updateWaterUI();
+        updateStreak();
+        if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
+    });
+});
+
+// ==========================================
+// --- EDIT / DELETE LOG MODAL ---
+// ==========================================
+const editModal = document.getElementById('edit-modal');
+const editModalTitle = document.getElementById('edit-modal-title');
+const editWaterFields = document.getElementById('edit-water-fields');
+const editProteinFields = document.getElementById('edit-protein-fields');
+const editWaterAmount = document.getElementById('edit-water-amount');
+const editMealNameInput = document.getElementById('edit-meal-name-input');
+const editProteinAmount = document.getElementById('edit-protein-amount');
+const editSaveBtn = document.getElementById('edit-save-btn');
+
+let editContext = { type: null, index: null };
+
+function openEditModal(type, index) {
+    editContext = { type, index };
+    const modalContent = editModal.querySelector('.modal-content');
+
+    if (type === 'water') {
+        const log = waterLogs[index];
+        editModalTitle.innerText = `💧 ${log.amount} oz — ${log.time}`;
+        editWaterFields.classList.remove('hidden');
+        editProteinFields.classList.add('hidden');
+        editWaterAmount.value = log.amount;
+        modalContent.style.borderColor = 'var(--neon-blue)';
+        modalContent.style.boxShadow = '0 0 20px var(--neon-blue-glow)';
+        editSaveBtn.className = 'nav-btn neon-blue small-btn';
+        editSaveBtn.style.width = '100%';
+        editSaveBtn.style.marginTop = '1.5rem';
+    } else {
+        const log = proteinLogs[index];
+        editModalTitle.innerText = `🥩 ${log.meal} — ${log.amount}g — ${log.time}`;
+        editWaterFields.classList.add('hidden');
+        editProteinFields.classList.remove('hidden');
+        editMealNameInput.value = log.meal;
+        editProteinAmount.value = log.amount;
+        modalContent.style.borderColor = 'var(--neon-purple)';
+        modalContent.style.boxShadow = '0 0 20px var(--neon-purple-glow)';
+        editSaveBtn.className = 'nav-btn neon-purple small-btn';
+        editSaveBtn.style.width = '100%';
+        editSaveBtn.style.marginTop = '1.5rem';
+    }
+
+    editModal.classList.remove('hidden');
+}
+
+function closeEditModal() {
+    editModal.classList.add('hidden');
+}
+
+document.getElementById('edit-close-btn').addEventListener('click', closeEditModal);
+editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
+
+editSaveBtn.addEventListener('click', () => {
+    const { type, index } = editContext;
+
+    if (type === 'water') {
+        const newAmount = parseFloat(editWaterAmount.value);
+        if (isNaN(newAmount) || newAmount <= 0) return;
+
+        const diff = newAmount - waterLogs[index].amount;
+        currentWater = Math.round((currentWater + diff) * 10) / 10;
+        if (currentWater < 0) currentWater = 0;
+        waterLogs[index].amount = newAmount;
+
+        const todayStr = getMTDateString();
+        waterHistory[todayStr] = currentWater;
+        waterArchive[todayStr] = waterLogs;
+
+        saveToFirebase();
+        renderWaterLogs();
+        updateWaterUI();
+        updateStreak();
+        if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
+    } else {
+        const newAmount = parseFloat(editProteinAmount.value);
+        const newMeal = editMealNameInput.value.trim() || proteinLogs[index].meal;
+        if (isNaN(newAmount) || newAmount <= 0) return;
+
+        const diff = newAmount - proteinLogs[index].amount;
+        currentProtein = Math.round((currentProtein + diff) * 10) / 10;
+        if (currentProtein < 0) currentProtein = 0;
+        proteinLogs[index].amount = newAmount;
+        proteinLogs[index].meal = newMeal;
+
+        const todayStr = getMTDateString();
+        proteinHistory[todayStr] = currentProtein;
+        proteinArchive[todayStr] = proteinLogs;
+
+        saveToFirebase();
+        renderProteinLogs();
+        updateProteinUI();
+        updateStreak();
+        if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+    }
+
+    closeEditModal();
+});
+
+document.getElementById('edit-delete-btn').addEventListener('click', () => {
+    const { type, index } = editContext;
+
+    if (type === 'water') {
+        currentWater = Math.round((currentWater - waterLogs[index].amount) * 10) / 10;
+        if (currentWater < 0) currentWater = 0;
+        waterLogs.splice(index, 1);
+
+        const todayStr = getMTDateString();
+        waterHistory[todayStr] = currentWater;
+        waterArchive[todayStr] = waterLogs;
+
+        saveToFirebase();
+        renderWaterLogs();
+        updateWaterUI();
+        updateStreak();
+        if (waterChartInstance) updateChart(waterChartInstance, waterHistory, waterViewMode);
+    } else {
+        currentProtein = Math.round((currentProtein - proteinLogs[index].amount) * 10) / 10;
+        if (currentProtein < 0) currentProtein = 0;
+        proteinLogs.splice(index, 1);
+
+        const todayStr = getMTDateString();
+        proteinHistory[todayStr] = currentProtein;
+        proteinArchive[todayStr] = proteinLogs;
+
+        saveToFirebase();
+        renderProteinLogs();
+        updateProteinUI();
+        updateStreak();
+        if (proteinChartInstance) updateChart(proteinChartInstance, proteinHistory, proteinViewMode);
+    }
+
+    closeEditModal();
 });
